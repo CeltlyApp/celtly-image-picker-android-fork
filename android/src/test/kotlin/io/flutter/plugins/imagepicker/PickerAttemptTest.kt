@@ -22,6 +22,7 @@ import org.robolectric.annotation.LooperMode
 import org.robolectric.Shadows.shadowOf
 import java.util.concurrent.CountDownLatch
 import kotlin.concurrent.thread
+import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [24, 33, 36])
@@ -199,5 +200,36 @@ class PickerAttemptTest {
         context.getSharedPreferences(PickerAttemptStore.NAME, Context.MODE_PRIVATE).edit().putString("record", "{}").commit()
         assertThrows(Exception::class.java) { store.current() }
         assertThrows(Exception::class.java) { store.begin(a) }
+    }
+    @Test fun lateInvalidatedResizeCannotOverwriteSameNamedNewGalleryImage() {
+        val epochA = launch()
+        val first = Robolectric.buildActivity(PickerAttemptActivity::class.java,
+            Intent(context, PickerAttemptActivity::class.java).putExtra("id", a).putExtra("epoch", epochA)).create().get()
+        val scopeA = first.processingContext()
+        store.invalidate(a)
+        val epochB = launch(b)
+        val second = Robolectric.buildActivity(PickerAttemptActivity::class.java,
+            Intent(context, PickerAttemptActivity::class.java).putExtra("id", b).putExtra("epoch", epochB)).create().get()
+        val scopeB = second.processingContext()
+        assertNotEquals(scopeA.cacheDir.canonicalPath, scopeB.cacheDir.canonicalPath)
+        assertEquals(scopeA.cacheDir.canonicalPath, first.processingContext().cacheDir.canonicalPath)
+        assertEquals(context.cacheDir.canonicalPath, first.cacheDir.canonicalPath)
+        assertEquals(context.cacheDir.canonicalPath, second.cacheDir.canonicalPath)
+        fun resized(scope: Context): File {
+            val input = File(scope.cacheDir, "same.png")
+            javaClass.classLoader!!.getResourceAsStream("pngImage.png")!!.use { source ->
+                input.outputStream().use { source.copyTo(it) }
+            }
+            return File(ImageResizer(scope, ExifDataCopier()).resizeImageIfNeeded(input.path, 1.0, 1.0, 90))
+        }
+        val outputA = resized(scopeA)
+        val outputB = resized(scopeB)
+        assertEquals("scaled_same.png", outputA.name)
+        assertEquals("scaled_same.png", outputB.name)
+        assertNotEquals(outputA.canonicalPath, outputB.canonicalPath)
+        val bytesB = outputB.readBytes()
+        outputA.writeText("late invalidated worker")
+        assertArrayEquals(bytesB, outputB.readBytes())
+        assertEquals(b, store.current()!!.getString("id"))
     }
 }

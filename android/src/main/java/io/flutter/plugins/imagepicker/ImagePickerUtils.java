@@ -32,7 +32,7 @@ final class ImagePickerUtils {
       String[] requestedPermissions = packageInfo.requestedPermissions;
       return Arrays.asList(requestedPermissions).contains(permissionName);
     } catch (PackageManager.NameNotFoundException e) {
-      e.printStackTrace();
+      // Keep permission diagnostics free of application identifiers.
       return false;
     }
   }

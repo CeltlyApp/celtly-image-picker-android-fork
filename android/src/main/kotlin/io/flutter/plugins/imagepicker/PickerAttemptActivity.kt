@@ -5,7 +5,10 @@ package io.flutter.plugins.imagepicker
 
 import android.app.Activity
 import android.content.Intent
+import android.content.Context
+import android.content.ContextWrapper
 import android.os.Bundle
+import java.io.File
 
 /** One immutable launch identity per Android Activity instance/result token. */
 class PickerAttemptActivity : Activity() {
@@ -22,7 +25,7 @@ class PickerAttemptActivity : Activity() {
             store = PickerAttemptStore(this)
             if (!store.matches(attemptId, epoch)) { finish(); return }
             cache = ImagePickerCache(this, "image_picker_attempt_$epoch")
-            delegate = ImagePickerDelegate(this, ImageResizer(this, ExifDataCopier()), cache)
+            delegate = ImagePickerDelegate(this, ImageResizer(processingContext(), ExifDataCopier()), cache)
             val options = ImageSelectionOptions(
                 if (intent.hasExtra("maxWidth")) intent.getDoubleExtra("maxWidth", 0.0) else null,
                 if (intent.hasExtra("maxHeight")) intent.getDoubleExtra("maxHeight", 0.0) else null,
@@ -46,6 +49,20 @@ class PickerAttemptActivity : Activity() {
                 else delegate.chooseImageFromGallery(options, intent.getBooleanExtra("photoPicker", true), callback)
             }
         } catch (_: Exception) { failSafely() }
+    }
+    // Upstream gallery inputs and camera files are already unique. Resized
+    // outputs otherwise share scaled_<basename>, so an invalidated worker could
+    // overwrite a newer attempt's bytes. Bind every resize output to this
+    // immutable Activity identity, including after invalidation/recreation.
+    // Do NOT override the Activity cacheDir: FileProvider's cached root must
+    // remain the application cache root for subsequent camera URI grants.
+    internal fun processingContext(): Context {
+        check(attemptId.matches(Regex("[a-f0-9]{48}")) && epoch > 0)
+        val directory = File(cacheDir, "image_picker_attempts/$epoch-$attemptId")
+        check(directory.isDirectory || directory.mkdirs()) { "attempt_storage" }
+        return object : ContextWrapper(this) {
+            override fun getCacheDir(): File = directory
+        }
     }
     private fun failSafely() {
         try {

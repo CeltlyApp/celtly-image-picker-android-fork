@@ -71,7 +71,7 @@ class FileUtils {
       String extension = getImageExtension(context, uri);
 
       if (fileName == null) {
-        Log.w("FileUtils", "Cannot get file name for " + uri);
+        Log.w("FileUtils", "Cannot get selected file name");
         if (extension == null) extension = ".jpg";
         fileName = "image_picker" + extension;
       } else if (extension != null) {

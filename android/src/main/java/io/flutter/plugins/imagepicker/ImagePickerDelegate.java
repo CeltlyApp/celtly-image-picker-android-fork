@@ -435,7 +435,7 @@ public class ImagePickerDelegate
         // noinspection ResultOfMethodCallIgnored
         videoFile.delete();
       } catch (SecurityException exception) {
-        exception.printStackTrace();
+        // Do not log a path-bearing cleanup exception.
       }
       finishWithError("no_available_camera", "No cameras available for taking pictures.");
     }
@@ -591,7 +591,7 @@ public class ImagePickerDelegate
         // noinspection ResultOfMethodCallIgnored
         imageFile.delete();
       } catch (SecurityException exception) {
-        exception.printStackTrace();
+        // Do not log a path-bearing cleanup exception.
       }
       finishWithError("no_available_camera", "No cameras available for taking pictures.");
     }
