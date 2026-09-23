@@ -3,6 +3,10 @@
     package="io.flutter.plugins.imagepicker">
 
     <application>
+        <activity android:name="io.flutter.plugins.imagepicker.PickerAttemptActivity"
+                  android:exported="false"
+                  android:launchMode="standard"
+                  android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <provider
             android:name="io.flutter.plugins.imagepicker.ImagePickerFileProvider"
             android:authorities="${applicationId}.flutter.image_provider"

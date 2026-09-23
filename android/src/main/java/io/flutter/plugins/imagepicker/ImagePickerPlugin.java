@@ -167,6 +167,7 @@ public class ImagePickerPlugin implements FlutterPlugin, ActivityAware, ImagePic
   }
 
   private FlutterPluginBinding pluginBinding;
+  private PickerAttemptBridge attemptBridge;
   ActivityState activityState;
 
   /**
@@ -190,10 +191,13 @@ public class ImagePickerPlugin implements FlutterPlugin, ActivityAware, ImagePic
   @Override
   public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
     pluginBinding = binding;
+    attemptBridge = new PickerAttemptBridge(binding.getApplicationContext(), binding.getBinaryMessenger());
   }
 
   @Override
   public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+    if (attemptBridge != null) attemptBridge.close();
+    attemptBridge = null;
     pluginBinding = null;
   }
 
@@ -288,6 +292,11 @@ public class ImagePickerPlugin implements FlutterPlugin, ActivityAware, ImagePic
       return;
     }
 
+    if (attemptBridge != null && attemptBridge.enabled()) {
+      attemptBridge.pick(activityState.getActivity(), source, options, generalOptions, callback);
+      return;
+    }
+
     setCameraDevice(delegate, source);
     if (generalOptions.getAllowMultiple()) {
       int limit = ImagePickerUtils.getLimitFromOption(generalOptions);
@@ -314,6 +323,11 @@ public class ImagePickerPlugin implements FlutterPlugin, ActivityAware, ImagePic
           Function1<
                   ? super @NotNull Result<? extends @NotNull List<@NotNull String>>, @NotNull Unit>
               callback) {
+    if (attemptBridge != null && attemptBridge.enabled()) {
+      ResultUtilsKt.completeWithError(callback,
+          new FlutterError("attempt_single_image_only", "Only single image attempts are supported.", null));
+      return;
+    }
     ImagePickerDelegate delegate = getImagePickerDelegate();
     if (delegate == null) {
       ResultUtilsKt.completeWithError(
@@ -334,6 +348,11 @@ public class ImagePickerPlugin implements FlutterPlugin, ActivityAware, ImagePic
           Function1<
                   ? super @NotNull Result<? extends @NotNull List<@NotNull String>>, @NotNull Unit>
               callback) {
+    if (attemptBridge != null && attemptBridge.enabled()) {
+      ResultUtilsKt.completeWithError(callback,
+          new FlutterError("attempt_single_image_only", "Only single image attempts are supported.", null));
+      return;
+    }
     ImagePickerDelegate delegate = getImagePickerDelegate();
     if (delegate == null) {
       ResultUtilsKt.completeWithError(
@@ -368,6 +387,7 @@ public class ImagePickerPlugin implements FlutterPlugin, ActivityAware, ImagePic
       throw new FlutterError(
           "no_activity", "image_picker plugin requires a foreground activity.", null);
     }
+    if (attemptBridge != null && attemptBridge.enabled()) return null;
     return delegate.retrieveLostImage();
   }
 }

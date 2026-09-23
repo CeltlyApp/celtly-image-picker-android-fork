@@ -227,6 +227,18 @@ public class ImagePickerDelegate
     this.executor = executor;
   }
 
+  // Only used by the per-attempt Activity after recreation. Does not launch
+  // another picker or clear the original attempt's private camera URI cache.
+  void closeAttemptExecutor() { executor.shutdown(); }
+
+  void restoreAttemptCallback(ImageSelectionOptions options,
+      Function1<? super Result<? extends List<String>>, Unit> callback) {
+    synchronized (pendingCallStateLock) {
+      if (pendingCallState != null) throw new IllegalStateException("attempt_active");
+      pendingCallState = new PendingCallState(options, null, callback);
+    }
+  }
+
   void setCameraDevice(CameraDevice device) {
     cameraDevice = device;
   }
